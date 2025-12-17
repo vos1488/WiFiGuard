@@ -59,6 +59,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, readonly) NSArray<WGChannelStats *> *channelStatistics;
 @property (nonatomic, assign) NSTimeInterval scanInterval; // Default 5 seconds
 
+// Singleton
++ (instancetype)sharedInstance;
+
 // Initialization
 - (instancetype)initWithAuditLogger:(WGAuditLogger *)logger;
 

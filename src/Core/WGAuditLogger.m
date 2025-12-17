@@ -62,6 +62,16 @@
 
 @implementation WGAuditLogger
 
+static WGAuditLogger *_sharedInstance = nil;
+
++ (instancetype)sharedInstance {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        _sharedInstance = [[self alloc] init];
+    });
+    return _sharedInstance;
+}
+
 - (instancetype)init {
     self = [super init];
     if (self) {
@@ -70,9 +80,17 @@
         _logQueue = dispatch_queue_create("com.wifiguard.auditlog", DISPATCH_QUEUE_SERIAL);
         
         [self setupLogFile];
-        [self logEvent:@"SESSION_STARTED" details:[NSString stringWithFormat:@"Session ID: %@", _sessionId]];
     }
     return self;
+}
+
+- (void)startNewSession {
+    _sessionId = [[NSUUID UUID] UUIDString];
+    [self logEvent:@"SESSION_STARTED" details:[NSString stringWithFormat:@"Session ID: %@", _sessionId]];
+}
+
+- (void)endSession {
+    [self logEvent:@"SESSION_ENDED" details:nil];
 }
 
 - (void)dealloc {

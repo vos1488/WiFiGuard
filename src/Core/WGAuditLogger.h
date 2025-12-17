@@ -27,6 +27,13 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, readonly) NSArray<WGAuditLogEntry *> *allEntries;
 @property (nonatomic, readonly) NSString *logFilePath;
 
+// Singleton
++ (instancetype)sharedInstance;
+
+// Session management
+- (void)startNewSession;
+- (void)endSession;
+
 // Initialization
 - (instancetype)init;
 

@@ -8,11 +8,15 @@
 NS_ASSUME_NONNULL_BEGIN
 
 typedef void (^WGDisclaimerCompletionHandler)(BOOL accepted);
+typedef void (^WGDisclaimerActionBlock)(void);
 
 @interface WGDisclaimerView : UIView
 
-@property (nonatomic, copy) WGDisclaimerCompletionHandler completionHandler;
+@property (nonatomic, copy, nullable) WGDisclaimerCompletionHandler completionHandler;
+@property (nonatomic, copy, nullable) WGDisclaimerActionBlock onAccept;
+@property (nonatomic, copy, nullable) WGDisclaimerActionBlock onDecline;
 
+- (instancetype)initWithFrame:(CGRect)frame;
 - (void)showInView:(UIView *)parentView;
 - (void)dismiss;
 

@@ -154,12 +154,18 @@
     if (self.completionHandler) {
         self.completionHandler(YES);
     }
+    if (self.onAccept) {
+        self.onAccept();
+    }
     [self dismiss];
 }
 
 - (void)cancelTapped {
     if (self.completionHandler) {
         self.completionHandler(NO);
+    }
+    if (self.onDecline) {
+        self.onDecline();
     }
     [self dismiss];
 }

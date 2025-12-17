@@ -190,6 +190,18 @@ struct rt_msghdr_ext {
 
 @implementation WGARPDetector
 
+static WGARPDetector *_sharedInstance = nil;
+
+#pragma mark - Singleton
+
++ (instancetype)sharedInstance {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        _sharedInstance = [[self alloc] initWithAuditLogger:[WGAuditLogger sharedInstance]];
+    });
+    return _sharedInstance;
+}
+
 #pragma mark - Initialization
 
 - (instancetype)initWithAuditLogger:(WGAuditLogger *)logger {

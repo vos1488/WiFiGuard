@@ -91,6 +91,9 @@ typedef NS_ENUM(NSInteger, WGARPAnomalyType) {
 @property (nonatomic, assign) BOOL alertOnMACChange;        // Default YES
 @property (nonatomic, assign) BOOL alertOnDuplicateMAC;     // Default YES
 
+// Singleton
++ (instancetype)sharedInstance;
+
 // Initialization
 - (instancetype)initWithAuditLogger:(WGAuditLogger *)logger;
 
