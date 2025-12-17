@@ -32,9 +32,11 @@ static NSString *const kWGOwnerConfirmDateKey = @"ownerConfirmDate";
                 NSFileHandle *handle = [NSFileHandle fileHandleForWritingAtPath:path];
                 if (handle) {
                     NSMutableData *randomData = [NSMutableData dataWithLength:(NSUInteger)fileSize];
-                    SecRandomCopyBytes(kSecRandomDefault, randomData.length, randomData.mutableBytes);
-                    [handle writeData:randomData];
-                    [handle synchronizeFile];
+                    int result = SecRandomCopyBytes(kSecRandomDefault, randomData.length, randomData.mutableBytes);
+                    if (result == 0) {
+                        [handle writeData:randomData];
+                        [handle synchronizeFile];
+                    }
                     [handle closeFile];
                 }
             }
