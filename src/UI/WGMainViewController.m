@@ -9,11 +9,11 @@
 #import "WGChannelSummaryView.h"
 #import "WGARPAlertView.h"
 #import "WGSettingsViewController.h"
-#import "../Core/WGWiFiScanner.h"
-#import "../Core/WGARPDetector.h"
-#import "../Core/WGAuditLogger.h"
-#import "../Core/WGDataExporter.h"
-#import "../Core/WGSimulationEngine.h"
+#import "WGWiFiScanner.h"
+#import "WGARPDetector.h"
+#import "WGAuditLogger.h"
+#import "WGDataExporter.h"
+#import "WGSimulationEngine.h"
 
 @interface WGMainViewController () <UITableViewDelegate, UITableViewDataSource, 
                                      WGWiFiScannerDelegate, WGARPDetectorDelegate>

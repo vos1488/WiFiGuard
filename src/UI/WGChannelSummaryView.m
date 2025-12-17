@@ -4,7 +4,7 @@
  */
 
 #import "WGChannelSummaryView.h"
-#import "../Core/WGWiFiScanner.h"
+#import "WGWiFiScanner.h"
 
 @interface WGChannelSummaryView ()
 

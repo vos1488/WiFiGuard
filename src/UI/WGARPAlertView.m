@@ -4,7 +4,7 @@
  */
 
 #import "WGARPAlertView.h"
-#import "../Core/WGARPDetector.h"
+#import "WGARPDetector.h"
 
 @interface WGARPAlertView ()
 

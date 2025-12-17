@@ -4,7 +4,7 @@
  */
 
 #import "WGRSSIGraphView.h"
-#import "../Core/WGWiFiScanner.h"
+#import "WGWiFiScanner.h"
 
 @interface WGRSSIGraphView ()
 

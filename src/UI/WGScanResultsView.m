@@ -4,7 +4,7 @@
  */
 
 #import "WGScanResultsView.h"
-#import "../Core/WGWiFiScanner.h"
+#import "WGWiFiScanner.h"
 
 @implementation WGScanResultsView
 
