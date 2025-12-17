@@ -5,7 +5,7 @@
 THEOS_DEVICE_IP = 127.0.0.1
 THEOS_DEVICE_PORT = 2222
 
-TARGET := iphone:clang:16.2:16.0
+TARGET := iphone:clang:latest:16.0
 
 ARCHS = arm64
 
