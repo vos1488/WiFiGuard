@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Allow access to WiFi APIs -->
+    <key>com.apple.wifi.manager-access</key>
+    <true/>
+    
+    <!-- Allow WiFi scanning -->
+    <key>com.apple.wlan.authentication</key>
+    <true/>
+    
+    <!-- Network access for ARP table reading -->
+    <key>com.apple.private.network.socket.wifi</key>
+    <true/>
+    
+    <!-- System info access -->
+    <key>com.apple.private.MobileGestalt.AllowedProtectedKeys</key>
+    <array>
+        <string>UniqueDeviceID</string>
+    </array>
+    
+    <!-- File access -->
+    <key>com.apple.private.security.no-sandbox</key>
+    <true/>
+    
+    <!-- Platform application -->
+    <key>platform-application</key>
+    <true/>
+    
+    <!-- Run unsigned code (for jailbroken devices) -->
+    <key>get-task-allow</key>
+    <true/>
+    
+    <!-- Dynamic codesigning -->
+    <key>dynamic-codesigning</key>
+    <true/>
+</dict>
+</plist>

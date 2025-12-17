@@ -1,0 +1,14 @@
+Package: com.wifiguard.app
+Name: WiFiGuard
+Version: 1.0.0
+Architecture: iphoneos-arm64
+Description: Passive Wi-Fi Network Analyzer for educational/lab purposes. Scans SSID/BSSID, channels, RSSI, encryption types. Includes ARP spoofing detection and simulation mode for isolated environments. NO ACTIVE ATTACKS IMPLEMENTED.
+Maintainer: WiFiGuard Developer
+Author: WiFiGuard Developer
+Section: Applications
+Depends: firmware (>= 16.0)
+Conflicts: 
+Replaces: 
+Priority: optional
+Tag: purpose::app, role::enduser
+
