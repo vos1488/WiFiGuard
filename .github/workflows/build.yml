@@ -23,18 +23,18 @@ jobs:
     
     - name: Install iOS SDK
       run: |
-        cd $HOME/theos/sdks
-        curl -LJO https://github.com/theos/sdks/releases/download/master/iPhoneOS16.5.sdk.tar.xz
-        file iPhoneOS16.5.sdk.tar.xz
-        xz -d iPhoneOS16.5.sdk.tar.xz
-        tar -xf iPhoneOS16.5.sdk.tar
-        rm -f iPhoneOS16.5.sdk.tar
+        cd $HOME/theos
+        curl -LO https://github.com/theos/sdks/archive/master.zip
+        unzip -q master.zip
+        mv sdks-master/*.sdk sdks/
+        rm -rf master.zip sdks-master
+        ls -la sdks/
     
     - name: Build Package
       run: |
         export THEOS=$HOME/theos
         export PATH="$THEOS/bin:$PATH"
-        make package THEOS_PACKAGE_SCHEME=rootless FINALPACKAGE=1 TARGET=iphone:clang:16.5:16.0
+        make package THEOS_PACKAGE_SCHEME=rootless FINALPACKAGE=1
     
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
