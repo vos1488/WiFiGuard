@@ -196,7 +196,9 @@
                                                           userInfo:nil
                                                            repeats:YES];
     
-    [self.delegate simulationDidStart:scenario];
+    if ([self.delegate respondsToSelector:@selector(simulationDidStart:)]) {
+        [self.delegate simulationDidStart:scenario];
+    }
     
     return YES;
 }
@@ -208,7 +210,9 @@
     self.isPaused = NO;
     
     [self.auditLogger logEvent:@"SIMULATION_STOPPED" details:nil];
-    [self.delegate simulationDidStop];
+    if ([self.delegate respondsToSelector:@selector(simulationDidStop)]) {
+        [self.delegate simulationDidStop];
+    }
 }
 
 - (void)pauseSimulation {
@@ -322,9 +326,11 @@
     }
     
     // Notify delegate of state update
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.delegate simulationStateDidUpdate:self.currentState];
-    });
+    if ([self.delegate respondsToSelector:@selector(simulationStateDidUpdate:)]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.delegate simulationStateDidUpdate:self.currentState];
+        });
+    }
 }
 
 #pragma mark - Scenario Execution: Basic ARP Spoof
@@ -609,9 +615,11 @@
 #pragma mark - Helpers
 
 - (void)notifyEvent:(WGSimulationEvent *)event {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.delegate simulationDidGenerateEvent:event];
-    });
+    if ([self.delegate respondsToSelector:@selector(simulationDidGenerateEvent:)]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.delegate simulationDidGenerateEvent:event];
+        });
+    }
 }
 
 - (void)completeSimulation {
@@ -633,9 +641,11 @@
                        details:[NSString stringWithFormat:@"Scenario: %@, Duration: %.0fs",
                                summary[@"scenario"], self.currentState.elapsedTime]];
     
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.delegate simulationDidComplete:self.currentScenario withSummary:summary];
-    });
+    if ([self.delegate respondsToSelector:@selector(simulationDidComplete:withSummary:)]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.delegate simulationDidComplete:self.currentScenario withSummary:summary];
+        });
+    }
 }
 
 #pragma mark - Data Access

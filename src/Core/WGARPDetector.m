@@ -394,7 +394,9 @@ static WGARPDetector *_sharedInstance = nil;
                                                      userInfo:nil
                                                       repeats:YES];
     
-    [self.delegate arpDetectorDidStartMonitoring:self];
+    if ([self.delegate respondsToSelector:@selector(arpDetectorDidStartMonitoring:)]) {
+        [self.delegate arpDetectorDidStartMonitoring:self];
+    }
     
     NSLog(@"[WiFiGuard] ARP monitoring started (PASSIVE DETECTION ONLY)");
     
@@ -416,7 +418,9 @@ static WGARPDetector *_sharedInstance = nil;
                        details:[NSString stringWithFormat:@"Anomalies detected: %ld", 
                                (long)self.statistics.anomaliesDetected]];
     
-    [self.delegate arpDetectorDidStopMonitoring:self];
+    if ([self.delegate respondsToSelector:@selector(arpDetectorDidStopMonitoring:)]) {
+        [self.delegate arpDetectorDidStopMonitoring:self];
+    }
     
     NSLog(@"[WiFiGuard] ARP monitoring stopped");
 }
@@ -434,9 +438,11 @@ static WGARPDetector *_sharedInstance = nil;
         self.statistics.totalEntriesMonitored = entries.count;
         
         // Notify delegate
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self.delegate arpDetector:self didUpdateTable:entries];
-        });
+        if ([self.delegate respondsToSelector:@selector(arpDetector:didUpdateTable:)]) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self.delegate arpDetector:self didUpdateTable:entries];
+            });
+        }
         
     } @catch (NSException *exception) {
         NSLog(@"[WiFiGuard] Error reading ARP table: %@", exception);
@@ -704,9 +710,11 @@ static WGARPDetector *_sharedInstance = nil;
     }
     
     // Notify delegate on main thread
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.delegate arpDetector:self didDetectAnomaly:anomaly];
-    });
+    if ([self.delegate respondsToSelector:@selector(arpDetector:didDetectAnomaly:)]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.delegate arpDetector:self didDetectAnomaly:anomaly];
+        });
+    }
     
     NSLog(@"[WiFiGuard] %@", [anomaly localizedDescription]);
 }
