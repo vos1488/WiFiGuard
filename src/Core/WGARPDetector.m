@@ -14,15 +14,76 @@
 #import "WGARPDetector.h"
 #import "WGAuditLogger.h"
 #import <sys/sysctl.h>
+#import <sys/socket.h>
 #import <net/if.h>
 #import <net/if_dl.h>
-#import <net/route.h>
 #import <netinet/in.h>
-#import <netinet/if_ether.h>
 #import <arpa/inet.h>
 #import <ifaddrs.h>
 
+// Route definitions (from net/route.h - may not be available in iOS SDK)
+#ifndef RTF_GATEWAY
+#define RTF_GATEWAY     0x2
+#endif
+#ifndef RTF_HOST
+#define RTF_HOST        0x4
+#endif
+#ifndef RTF_LLINFO
+#define RTF_LLINFO      0x400
+#endif
+#ifndef RTM_VERSION
+#define RTM_VERSION     5
+#endif
+#ifndef RTM_GET
+#define RTM_GET         0x4
+#endif
+#ifndef NET_RT_FLAGS
+#define NET_RT_FLAGS    2
+#endif
+#ifndef NET_RT_DUMP
+#define NET_RT_DUMP     1
+#endif
+#ifndef RTAX_DST
+#define RTAX_DST        0
+#endif
+#ifndef RTAX_GATEWAY
+#define RTAX_GATEWAY    1
+#endif
+#ifndef RTAX_NETMASK
+#define RTAX_NETMASK    2
+#endif
+#ifndef RTAX_MAX
+#define RTAX_MAX        8
+#endif
+
 // Route message structure for reading ARP table
+struct rt_msghdr {
+    u_short rtm_msglen;
+    u_char  rtm_version;
+    u_char  rtm_type;
+    u_short rtm_index;
+    int     rtm_flags;
+    int     rtm_addrs;
+    pid_t   rtm_pid;
+    int     rtm_seq;
+    int     rtm_errno;
+    int     rtm_use;
+    u_int32_t rtm_inits;
+    struct rt_metrics {
+        u_int32_t rmx_locks;
+        u_int32_t rmx_mtu;
+        u_int32_t rmx_hopcount;
+        int32_t   rmx_expire;
+        u_int32_t rmx_recvpipe;
+        u_int32_t rmx_sendpipe;
+        u_int32_t rmx_ssthresh;
+        u_int32_t rmx_rtt;
+        u_int32_t rmx_rttvar;
+        u_int32_t rmx_pksent;
+        u_int32_t rmx_filler[4];
+    } rtm_rmx;
+};
+
 struct rt_msghdr_ext {
     u_short rtm_msglen;
     u_char  rtm_version;
