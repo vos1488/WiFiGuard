@@ -32,7 +32,7 @@ WiFiGuard_FILES = src/main.m \
                   src/Utils/WGNetworkUtils.m
 
 WiFiGuard_CFLAGS = -fobjc-arc -Wno-deprecated-declarations -Isrc -Isrc/Core -Isrc/Utils -Isrc/UI
-WiFiGuard_LDFLAGS = -lMobileGestalt -weak_framework MobileWiFi
+WiFiGuard_LDFLAGS = -lMobileGestalt
 WiFiGuard_FRAMEWORKS = UIKit Foundation CoreFoundation SystemConfiguration Security
 WiFiGuard_CODESIGN_FLAGS = -Sentitlements.plist
 
