@@ -9,6 +9,7 @@
 #import "WGWiFiScanner.h"
 #import "WGAuditLogger.h"
 #import "WGNetworkUtils.h"
+#import <dlfcn.h>
 
 // MobileWiFi.framework Private API Declarations
 // RISK: These APIs are undocumented and may change between iOS versions
@@ -17,18 +18,55 @@ typedef struct __WiFiManager *WiFiManagerRef;
 typedef struct __WiFiNetwork *WiFiNetworkRef;
 typedef struct __WiFiDevice *WiFiDeviceRef;
 
-extern WiFiManagerRef WiFiManagerClientCreate(CFAllocatorRef allocator, int flags);
-extern CFArrayRef WiFiManagerClientCopyDevices(WiFiManagerRef manager);
-extern CFArrayRef WiFiDeviceClientCopyCurrentNetwork(WiFiDeviceRef device);
-extern int WiFiDeviceClientGetPower(WiFiDeviceRef device);
-extern void WiFiDeviceClientScanAsync(WiFiDeviceRef device, CFDictionaryRef options, 
-                                       void (^callback)(CFArrayRef results, int error), int flags);
-extern CFStringRef WiFiNetworkGetSSID(WiFiNetworkRef network);
-extern CFStringRef WiFiNetworkGetBSSID(WiFiNetworkRef network);
-extern CFNumberRef WiFiNetworkGetRSSI(WiFiNetworkRef network);
-extern CFNumberRef WiFiNetworkGetChannel(WiFiNetworkRef network);
-extern Boolean WiFiNetworkIsHidden(WiFiNetworkRef network);
-extern CFDictionaryRef WiFiNetworkCopyRecord(WiFiNetworkRef network);
+// Function pointer types
+typedef WiFiManagerRef (*WiFiManagerClientCreate_t)(CFAllocatorRef, int);
+typedef CFArrayRef (*WiFiManagerClientCopyDevices_t)(WiFiManagerRef);
+typedef CFArrayRef (*WiFiDeviceClientCopyCurrentNetwork_t)(WiFiDeviceRef);
+typedef int (*WiFiDeviceClientGetPower_t)(WiFiDeviceRef);
+typedef void (*WiFiDeviceClientScanAsync_t)(WiFiDeviceRef, CFDictionaryRef, void (^)(CFArrayRef, int), int);
+typedef CFStringRef (*WiFiNetworkGetSSID_t)(WiFiNetworkRef);
+typedef CFStringRef (*WiFiNetworkGetBSSID_t)(WiFiNetworkRef);
+typedef CFNumberRef (*WiFiNetworkGetRSSI_t)(WiFiNetworkRef);
+typedef CFNumberRef (*WiFiNetworkGetChannel_t)(WiFiNetworkRef);
+typedef Boolean (*WiFiNetworkIsHidden_t)(WiFiNetworkRef);
+typedef CFDictionaryRef (*WiFiNetworkCopyRecord_t)(WiFiNetworkRef);
+
+// Function pointers (loaded dynamically)
+static WiFiManagerClientCreate_t WiFiManagerClientCreate = NULL;
+static WiFiManagerClientCopyDevices_t WiFiManagerClientCopyDevices = NULL;
+static WiFiDeviceClientCopyCurrentNetwork_t WiFiDeviceClientCopyCurrentNetwork = NULL;
+static WiFiDeviceClientGetPower_t WiFiDeviceClientGetPower = NULL;
+static WiFiDeviceClientScanAsync_t WiFiDeviceClientScanAsync = NULL;
+static WiFiNetworkGetSSID_t WiFiNetworkGetSSID = NULL;
+static WiFiNetworkGetBSSID_t WiFiNetworkGetBSSID = NULL;
+static WiFiNetworkGetRSSI_t WiFiNetworkGetRSSI = NULL;
+static WiFiNetworkGetChannel_t WiFiNetworkGetChannel = NULL;
+static WiFiNetworkIsHidden_t WiFiNetworkIsHidden = NULL;
+static WiFiNetworkCopyRecord_t WiFiNetworkCopyRecord = NULL;
+
+// Load MobileWiFi functions dynamically
+static void LoadMobileWiFiFunctions(void) {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        void *handle = dlopen("/System/Library/PrivateFrameworks/MobileWiFi.framework/MobileWiFi", RTLD_LAZY);
+        if (!handle) {
+            NSLog(@"[WiFiGuard] Failed to load MobileWiFi.framework");
+            return;
+        }
+        
+        WiFiManagerClientCreate = (WiFiManagerClientCreate_t)dlsym(handle, "WiFiManagerClientCreate");
+        WiFiManagerClientCopyDevices = (WiFiManagerClientCopyDevices_t)dlsym(handle, "WiFiManagerClientCopyDevices");
+        WiFiDeviceClientCopyCurrentNetwork = (WiFiDeviceClientCopyCurrentNetwork_t)dlsym(handle, "WiFiDeviceClientCopyCurrentNetwork");
+        WiFiDeviceClientGetPower = (WiFiDeviceClientGetPower_t)dlsym(handle, "WiFiDeviceClientGetPower");
+        WiFiDeviceClientScanAsync = (WiFiDeviceClientScanAsync_t)dlsym(handle, "WiFiDeviceClientScanAsync");
+        WiFiNetworkGetSSID = (WiFiNetworkGetSSID_t)dlsym(handle, "WiFiNetworkGetSSID");
+        WiFiNetworkGetBSSID = (WiFiNetworkGetBSSID_t)dlsym(handle, "WiFiNetworkGetBSSID");
+        WiFiNetworkGetRSSI = (WiFiNetworkGetRSSI_t)dlsym(handle, "WiFiNetworkGetRSSI");
+        WiFiNetworkGetChannel = (WiFiNetworkGetChannel_t)dlsym(handle, "WiFiNetworkGetChannel");
+        WiFiNetworkIsHidden = (WiFiNetworkIsHidden_t)dlsym(handle, "WiFiNetworkIsHidden");
+        WiFiNetworkCopyRecord = (WiFiNetworkCopyRecord_t)dlsym(handle, "WiFiNetworkCopyRecord");
+    });
+}
 
 #pragma mark - WGNetworkInfo Implementation
 
@@ -148,6 +186,9 @@ static WGWiFiScanner *_sharedInstance = nil;
 - (instancetype)initWithAuditLogger:(WGAuditLogger *)logger {
     self = [super init];
     if (self) {
+        // Load MobileWiFi functions
+        LoadMobileWiFiFunctions();
+        
         _auditLogger = logger;
         _networkCache = [NSMutableDictionary dictionary];
         _channelStatsCache = [NSMutableDictionary dictionary];
