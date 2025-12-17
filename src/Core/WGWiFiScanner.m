@@ -46,13 +46,16 @@ static WiFiNetworkCopyRecord_t WiFiNetworkCopyRecord = NULL;
 
 // Load MobileWiFi functions dynamically
 static BOOL gMobileWiFiLoaded = NO;
+static NSString *gLoadError = nil;
 
 static void LoadMobileWiFiFunctions(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
+        // Try loading MobileWiFi.framework
         void *handle = dlopen("/System/Library/PrivateFrameworks/MobileWiFi.framework/MobileWiFi", RTLD_LAZY);
         if (!handle) {
-            NSLog(@"[WiFiGuard] Failed to load MobileWiFi.framework: %s", dlerror());
+            gLoadError = [NSString stringWithFormat:@"dlopen failed: %s", dlerror()];
+            NSLog(@"[WiFiGuard] %@", gLoadError);
             gMobileWiFiLoaded = NO;
             return;
         }
@@ -69,14 +72,21 @@ static void LoadMobileWiFiFunctions(void) {
         WiFiNetworkIsHidden = (WiFiNetworkIsHidden_t)dlsym(handle, "WiFiNetworkIsHidden");
         WiFiNetworkCopyRecord = (WiFiNetworkCopyRecord_t)dlsym(handle, "WiFiNetworkCopyRecord");
         
+        // Log which functions loaded
+        NSLog(@"[WiFiGuard] WiFiManagerClientCreate: %@", WiFiManagerClientCreate ? @"✓" : @"✗");
+        NSLog(@"[WiFiGuard] WiFiManagerClientCopyDevices: %@", WiFiManagerClientCopyDevices ? @"✓" : @"✗");
+        NSLog(@"[WiFiGuard] WiFiDeviceClientScanAsync: %@", WiFiDeviceClientScanAsync ? @"✓" : @"✗");
+        NSLog(@"[WiFiGuard] WiFiDeviceClientGetPower: %@", WiFiDeviceClientGetPower ? @"✓" : @"✗");
+        
         // Verify critical functions loaded
         gMobileWiFiLoaded = (WiFiManagerClientCreate != NULL && 
-                            WiFiManagerClientCopyDevices != NULL &&
-                            WiFiDeviceClientScanAsync != NULL);
+                            WiFiManagerClientCopyDevices != NULL);
         
         if (!gMobileWiFiLoaded) {
+            gLoadError = @"Critical functions not found";
             NSLog(@"[WiFiGuard] Some MobileWiFi functions failed to load");
         } else {
+            gLoadError = nil;
             NSLog(@"[WiFiGuard] MobileWiFi.framework loaded successfully");
         }
     });
@@ -661,5 +671,30 @@ static WGWiFiScanner *_sharedInstance = nil;
     }
     return data;
 }
+#pragma mark - Diagnostics
 
+- (NSString *)diagnosticStatus {
+    // Force load attempt
+    LoadMobileWiFiFunctions();
+    
+    if (!gMobileWiFiLoaded) {
+        if (gLoadError) {
+            return [NSString stringWithFormat:@"❌ %@", gLoadError];
+        }
+        return @"❌ MobileWiFi not loaded";
+    }
+    if (!self.wifiManager) {
+        return @"❌ No WiFi Manager";
+    }
+    if (!self.wifiDevice) {
+        return @"❌ No WiFi Device";
+    }
+    if (WiFiDeviceClientGetPower && !WiFiDeviceClientGetPower(self.wifiDevice)) {
+        return @"⚠️ WiFi OFF";
+    }
+    if (self.isScanning) {
+        return @"✅ Scanning...";
+    }
+    return @"✅ Ready";
+}
 @end

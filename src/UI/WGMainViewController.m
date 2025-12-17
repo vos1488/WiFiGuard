@@ -263,6 +263,9 @@
     [self.auditLogger logMonitoringStart];
     
     [self updateUIForMonitoringState];
+    
+    // Update table header to show diagnostic status
+    [self.networksTableView reloadData];
 }
 
 - (void)stopMonitoring {
@@ -408,7 +411,8 @@
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    return [NSString stringWithFormat:@"Discovered Networks (%lu)", (unsigned long)self.networks.count];
+    NSString *status = [self.wifiScanner diagnosticStatus];
+    return [NSString stringWithFormat:@"Discovered Networks (%lu) %@", (unsigned long)self.networks.count, status ?: @""];
 }
 
 #pragma mark - UITableViewDelegate

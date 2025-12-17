@@ -78,6 +78,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 // Statistics
 - (WGChannelStats *)statsForChannel:(NSInteger)channel;
+
+// Diagnostics
+- (NSString *)diagnosticStatus;
 - (NSInteger)mostCrowdedChannel;
 - (NSInteger)leastCrowdedChannel;
 - (NSArray<NSNumber *> *)recommendedChannels;

@@ -10,6 +10,14 @@
     <key>com.apple.wlan.authentication</key>
     <true/>
     
+    <!-- MobileWiFi framework access -->
+    <key>com.apple.MobileWiFi.allowed</key>
+    <true/>
+    
+    <!-- WiFi association -->
+    <key>com.apple.wifi.associate</key>
+    <true/>
+    
     <!-- Network access for ARP table reading -->
     <key>com.apple.private.network.socket.wifi</key>
     <true/>
@@ -34,6 +42,10 @@
     
     <!-- Dynamic codesigning -->
     <key>dynamic-codesigning</key>
+    <true/>
+    
+    <!-- Allow loading private frameworks -->
+    <key>com.apple.private.security.no-container</key>
     <true/>
 </dict>
 </plist>
