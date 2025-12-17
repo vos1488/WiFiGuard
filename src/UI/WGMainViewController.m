@@ -473,8 +473,13 @@
 }
 
 - (void)wifiScanner:(WGWiFiScanner *)scanner didEncounterError:(NSError *)error {
+    // Stop monitoring on error
+    if (self.isMonitoring) {
+        [self stopMonitoring];
+    }
+    
     UIAlertController *alert = [UIAlertController 
-        alertControllerWithTitle:@"Scan Error"
+        alertControllerWithTitle:@"WiFi Scanner Error"
         message:error.localizedDescription
         preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];

@@ -45,12 +45,15 @@ static WiFiNetworkIsHidden_t WiFiNetworkIsHidden = NULL;
 static WiFiNetworkCopyRecord_t WiFiNetworkCopyRecord = NULL;
 
 // Load MobileWiFi functions dynamically
+static BOOL gMobileWiFiLoaded = NO;
+
 static void LoadMobileWiFiFunctions(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         void *handle = dlopen("/System/Library/PrivateFrameworks/MobileWiFi.framework/MobileWiFi", RTLD_LAZY);
         if (!handle) {
-            NSLog(@"[WiFiGuard] Failed to load MobileWiFi.framework");
+            NSLog(@"[WiFiGuard] Failed to load MobileWiFi.framework: %s", dlerror());
+            gMobileWiFiLoaded = NO;
             return;
         }
         
@@ -65,7 +68,23 @@ static void LoadMobileWiFiFunctions(void) {
         WiFiNetworkGetChannel = (WiFiNetworkGetChannel_t)dlsym(handle, "WiFiNetworkGetChannel");
         WiFiNetworkIsHidden = (WiFiNetworkIsHidden_t)dlsym(handle, "WiFiNetworkIsHidden");
         WiFiNetworkCopyRecord = (WiFiNetworkCopyRecord_t)dlsym(handle, "WiFiNetworkCopyRecord");
+        
+        // Verify critical functions loaded
+        gMobileWiFiLoaded = (WiFiManagerClientCreate != NULL && 
+                            WiFiManagerClientCopyDevices != NULL &&
+                            WiFiDeviceClientScanAsync != NULL);
+        
+        if (!gMobileWiFiLoaded) {
+            NSLog(@"[WiFiGuard] Some MobileWiFi functions failed to load");
+        } else {
+            NSLog(@"[WiFiGuard] MobileWiFi.framework loaded successfully");
+        }
     });
+}
+
+static BOOL IsMobileWiFiAvailable(void) {
+    LoadMobileWiFiFunctions();
+    return gMobileWiFiLoaded;
 }
 
 #pragma mark - WGNetworkInfo Implementation
@@ -203,10 +222,19 @@ static WGWiFiScanner *_sharedInstance = nil;
 }
 
 - (void)initializeWiFiManager {
+    if (!IsMobileWiFiAvailable()) {
+        NSLog(@"[WiFiGuard] MobileWiFi.framework not available - WiFi scanning disabled");
+        [self.auditLogger logEvent:@"SCANNER_INIT_ERROR" 
+                           details:@"MobileWiFi.framework not available"];
+        return;
+    }
+    
     @try {
-        _wifiManager = WiFiManagerClientCreate(kCFAllocatorDefault, 0);
+        if (WiFiManagerClientCreate) {
+            _wifiManager = WiFiManagerClientCreate(kCFAllocatorDefault, 0);
+        }
         
-        if (_wifiManager) {
+        if (_wifiManager && WiFiManagerClientCopyDevices) {
             CFArrayRef devices = WiFiManagerClientCopyDevices(_wifiManager);
             if (devices && CFArrayGetCount(devices) > 0) {
                 _wifiDevice = (WiFiDeviceRef)CFArrayGetValueAtIndex(devices, 0);
@@ -214,7 +242,11 @@ static WGWiFiScanner *_sharedInstance = nil;
             if (devices) CFRelease(devices);
         }
         
-        NSLog(@"[WiFiGuard] WiFi manager initialized successfully");
+        if (_wifiDevice) {
+            NSLog(@"[WiFiGuard] WiFi manager initialized successfully");
+        } else {
+            NSLog(@"[WiFiGuard] WiFi manager created but no device found");
+        }
     } @catch (NSException *exception) {
         NSLog(@"[WiFiGuard] Error initializing WiFi manager: %@", exception);
         [self.auditLogger logEvent:@"SCANNER_INIT_ERROR" 
@@ -237,20 +269,34 @@ static WGWiFiScanner *_sharedInstance = nil;
         return YES;
     }
     
+    if (!IsMobileWiFiAvailable()) {
+        NSError *error = [NSError errorWithDomain:@"WGWiFiScannerError" 
+                                             code:0 
+                                         userInfo:@{NSLocalizedDescriptionKey: @"MobileWiFi.framework not available. Requires jailbroken device."}];
+        if ([self.delegate respondsToSelector:@selector(wifiScanner:didEncounterError:)]) {
+            [self.delegate wifiScanner:self didEncounterError:error];
+        }
+        return NO;
+    }
+    
     if (!self.wifiDevice) {
         NSError *error = [NSError errorWithDomain:@"WGWiFiScannerError" 
                                              code:1 
                                          userInfo:@{NSLocalizedDescriptionKey: @"WiFi device not available"}];
-        [self.delegate wifiScanner:self didEncounterError:error];
+        if ([self.delegate respondsToSelector:@selector(wifiScanner:didEncounterError:)]) {
+            [self.delegate wifiScanner:self didEncounterError:error];
+        }
         return NO;
     }
     
     // Check if WiFi is powered on
-    if (!WiFiDeviceClientGetPower(self.wifiDevice)) {
+    if (WiFiDeviceClientGetPower && !WiFiDeviceClientGetPower(self.wifiDevice)) {
         NSError *error = [NSError errorWithDomain:@"WGWiFiScannerError" 
                                              code:2 
                                          userInfo:@{NSLocalizedDescriptionKey: @"WiFi is turned off"}];
-        [self.delegate wifiScanner:self didEncounterError:error];
+        if ([self.delegate respondsToSelector:@selector(wifiScanner:didEncounterError:)]) {
+            [self.delegate wifiScanner:self didEncounterError:error];
+        }
         return NO;
     }
     
@@ -269,7 +315,9 @@ static WGWiFiScanner *_sharedInstance = nil;
                                                     userInfo:nil
                                                      repeats:YES];
     
-    [self.delegate wifiScannerDidStartScanning:self];
+    if ([self.delegate respondsToSelector:@selector(wifiScannerDidStartScanning:)]) {
+        [self.delegate wifiScannerDidStartScanning:self];
+    }
     
     NSLog(@"[WiFiGuard] Passive scanning started (interval: %.1fs)", self.scanInterval);
     
@@ -289,13 +337,21 @@ static WGWiFiScanner *_sharedInstance = nil;
                        details:[NSString stringWithFormat:@"Networks found: %lu", 
                                (unsigned long)self.networkCache.count]];
     
-    [self.delegate wifiScannerDidStopScanning:self];
+    if ([self.delegate respondsToSelector:@selector(wifiScannerDidStopScanning:)]) {
+        [self.delegate wifiScannerDidStopScanning:self];
+    }
     
     NSLog(@"[WiFiGuard] Scanning stopped");
 }
 
 - (void)performSingleScan {
     if (!self.wifiDevice) {
+        return;
+    }
+    
+    // Check if async scan function is available
+    if (!WiFiDeviceClientScanAsync) {
+        NSLog(@"[WiFiGuard] WiFiDeviceClientScanAsync not available");
         return;
     }
     
@@ -314,7 +370,9 @@ static WGWiFiScanner *_sharedInstance = nil;
                     NSError *scanError = [NSError errorWithDomain:@"WGWiFiScannerError" 
                                                              code:error 
                                                          userInfo:@{NSLocalizedDescriptionKey: @"Scan failed"}];
-                    [self.delegate wifiScanner:self didEncounterError:scanError];
+                    if ([self.delegate respondsToSelector:@selector(wifiScanner:didEncounterError:)]) {
+                        [self.delegate wifiScanner:self didEncounterError:scanError];
+                    }
                 });
                 return;
             }
@@ -359,50 +417,66 @@ static WGWiFiScanner *_sharedInstance = nil;
     
     // Notify delegate on main thread
     dispatch_async(dispatch_get_main_queue(), ^{
-        [self.delegate wifiScanner:self didFindNetworks:[self.networkCache.allValues copy]];
+        if ([self.delegate respondsToSelector:@selector(wifiScanner:didFindNetworks:)]) {
+            [self.delegate wifiScanner:self didFindNetworks:[self.networkCache.allValues copy]];
+        }
     });
 }
 
 - (WGNetworkInfo *)parseNetworkInfo:(WiFiNetworkRef)network {
+    if (!network) return nil;
+    
     WGNetworkInfo *info = [[WGNetworkInfo alloc] init];
     
     // Get SSID
-    CFStringRef ssidRef = WiFiNetworkGetSSID(network);
-    if (ssidRef) {
-        info.ssid = (__bridge NSString *)ssidRef;
+    if (WiFiNetworkGetSSID) {
+        CFStringRef ssidRef = WiFiNetworkGetSSID(network);
+        if (ssidRef) {
+            info.ssid = (__bridge NSString *)ssidRef;
+        }
     }
     
     // Get BSSID
-    CFStringRef bssidRef = WiFiNetworkGetBSSID(network);
-    if (bssidRef) {
-        info.bssid = (__bridge NSString *)bssidRef;
+    if (WiFiNetworkGetBSSID) {
+        CFStringRef bssidRef = WiFiNetworkGetBSSID(network);
+        if (bssidRef) {
+            info.bssid = (__bridge NSString *)bssidRef;
+        }
     }
     
     // Get RSSI
-    CFNumberRef rssiRef = WiFiNetworkGetRSSI(network);
-    if (rssiRef) {
-        int rssi = 0;
-        CFNumberGetValue(rssiRef, kCFNumberIntType, &rssi);
-        info.rssi = rssi;
+    if (WiFiNetworkGetRSSI) {
+        CFNumberRef rssiRef = WiFiNetworkGetRSSI(network);
+        if (rssiRef) {
+            int rssi = 0;
+            CFNumberGetValue(rssiRef, kCFNumberIntType, &rssi);
+            info.rssi = rssi;
+        }
     }
     
     // Get Channel
-    CFNumberRef channelRef = WiFiNetworkGetChannel(network);
-    if (channelRef) {
-        int channel = 0;
-        CFNumberGetValue(channelRef, kCFNumberIntType, &channel);
-        info.channel = channel;
+    if (WiFiNetworkGetChannel) {
+        CFNumberRef channelRef = WiFiNetworkGetChannel(network);
+        if (channelRef) {
+            int channel = 0;
+            CFNumberGetValue(channelRef, kCFNumberIntType, &channel);
+            info.channel = channel;
+        }
     }
     
     // Check if hidden
-    info.isHidden = WiFiNetworkIsHidden(network);
+    if (WiFiNetworkIsHidden) {
+        info.isHidden = WiFiNetworkIsHidden(network);
+    }
     
     // Get security type from network record
-    CFDictionaryRef record = WiFiNetworkCopyRecord(network);
-    if (record) {
-        info.securityType = [self parseSecurityType:record];
-        info.channelWidth = [self parseChannelWidth:record];
-        CFRelease(record);
+    if (WiFiNetworkCopyRecord) {
+        CFDictionaryRef record = WiFiNetworkCopyRecord(network);
+        if (record) {
+            info.securityType = [self parseSecurityType:record];
+            info.channelWidth = [self parseChannelWidth:record];
+            CFRelease(record);
+        }
     }
     
     return info;
