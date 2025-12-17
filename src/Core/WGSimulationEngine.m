@@ -55,7 +55,7 @@
 + (instancetype)eventWithType:(NSString *)type description:(NSString *)desc {
     WGSimulationEvent *event = [[WGSimulationEvent alloc] init];
     event.eventType = type;
-    event.description = desc;
+    event.eventDescription = desc;
     return event;
 }
 
@@ -663,7 +663,7 @@
         [events addObject:@{
             @"timestamp": event.timestamp.description,
             @"type": event.eventType ?: @"",
-            @"description": event.description ?: @"",
+            @"description": event.eventDescription ?: @"",
             @"isMalicious": @(event.isMalicious)
         }];
     }

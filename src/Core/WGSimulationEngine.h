@@ -53,7 +53,7 @@ typedef NS_ENUM(NSInteger, WGSimulationScenario) {
 @property (nonatomic, copy) NSString *sourceMAC;
 @property (nonatomic, copy) NSString *targetIP;
 @property (nonatomic, copy) NSString *targetMAC;
-@property (nonatomic, copy) NSString *description;
+@property (nonatomic, copy) NSString *eventDescription;
 @property (nonatomic, assign) BOOL isMalicious;
 
 @end
