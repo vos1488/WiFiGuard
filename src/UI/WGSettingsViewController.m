@@ -40,6 +40,17 @@ typedef NS_ENUM(NSInteger, WGSettingsSection) {
         target:self 
         action:@selector(doneTapped)];
     
+    // Use shared instances if not set
+    if (!self.wifiScanner) {
+        self.wifiScanner = [WGWiFiScanner sharedInstance];
+    }
+    if (!self.arpDetector) {
+        self.arpDetector = [WGARPDetector sharedInstance];
+    }
+    if (!self.auditLogger) {
+        self.auditLogger = [WGAuditLogger sharedInstance];
+    }
+    
     self.simulationEngine = [[WGSimulationEngine alloc] initWithAuditLogger:self.auditLogger];
     self.simulationEngine.delegate = self;
 }

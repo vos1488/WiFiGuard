@@ -102,7 +102,7 @@
 - (instancetype)initWithAuditLogger:(WGAuditLogger *)logger {
     self = [super init];
     if (self) {
-        _auditLogger = logger;
+        _auditLogger = logger ?: [WGAuditLogger sharedInstance];
         _currentState = [[WGSimulationState alloc] init];
         _isRunning = NO;
         _isPaused = NO;
