@@ -31,6 +31,9 @@
 #ifndef RTF_LLINFO
 #define RTF_LLINFO      0x400
 #endif
+#ifndef RTF_STATIC
+#define RTF_STATIC      0x800
+#endif
 #ifndef RTM_VERSION
 #define RTM_VERSION     5
 #endif
@@ -55,6 +58,18 @@
 #ifndef RTAX_MAX
 #define RTAX_MAX        8
 #endif
+
+// sockaddr_inarp structure for ARP entries
+struct sockaddr_inarp {
+    u_char  sin_len;
+    u_char  sin_family;
+    u_short sin_port;
+    struct  in_addr sin_addr;
+    struct  in_addr sin_srcaddr;
+    u_short sin_tos;
+    u_short sin_other;
+    char    sin_zero[8];
+};
 
 // Route message structure for reading ARP table
 struct rt_msghdr {
@@ -252,6 +267,8 @@ struct rt_msghdr_ext {
 @implementation WGARPDetector
 
 static WGARPDetector *_sharedInstance = nil;
+
+@synthesize gatewayIP = _gatewayIP;
 
 #pragma mark - Singleton
 
@@ -745,10 +762,6 @@ static WGARPDetector *_sharedInstance = nil;
     
     WGARPEntry *gatewayEntry = self.arpCache[self.gatewayIP];
     return gatewayEntry.macAddress;
-}
-
-- (NSString *)gatewayIP {
-    return _gatewayIP;
 }
 
 #pragma mark - Anomaly Management
