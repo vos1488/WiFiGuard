@@ -299,16 +299,9 @@ static WGWiFiScanner *_sharedInstance = nil;
         return NO;
     }
     
-    // Check if WiFi is powered on
-    if (WiFiDeviceClientGetPower && !WiFiDeviceClientGetPower(self.wifiDevice)) {
-        NSError *error = [NSError errorWithDomain:@"WGWiFiScannerError" 
-                                             code:2 
-                                         userInfo:@{NSLocalizedDescriptionKey: @"WiFi is turned off"}];
-        if ([self.delegate respondsToSelector:@selector(wifiScanner:didEncounterError:)]) {
-            [self.delegate wifiScanner:self didEncounterError:error];
-        }
-        return NO;
-    }
+    // Note: WiFiDeviceClientGetPower may not work correctly on iOS 16+
+    // We'll try scanning anyway and let the scan callback handle errors
+    NSLog(@"[WiFiGuard] Starting scan (WiFi power check skipped for iOS 16+ compatibility)");
     
     self.isScanning = YES;
     
@@ -356,6 +349,7 @@ static WGWiFiScanner *_sharedInstance = nil;
 
 - (void)performSingleScan {
     if (!self.wifiDevice) {
+        NSLog(@"[WiFiGuard] Cannot scan: no WiFi device");
         return;
     }
     
@@ -364,6 +358,8 @@ static WGWiFiScanner *_sharedInstance = nil;
         NSLog(@"[WiFiGuard] WiFiDeviceClientScanAsync not available");
         return;
     }
+    
+    NSLog(@"[WiFiGuard] Initiating WiFi scan...");
     
     @try {
         // Perform passive scan - NO active probing
@@ -376,10 +372,11 @@ static WGWiFiScanner *_sharedInstance = nil;
                                   (__bridge CFDictionaryRef)options, 
                                   ^(CFArrayRef results, int error) {
             if (error != 0) {
+                NSLog(@"[WiFiGuard] Scan callback error: %d", error);
                 dispatch_async(dispatch_get_main_queue(), ^{
                     NSError *scanError = [NSError errorWithDomain:@"WGWiFiScannerError" 
                                                              code:error 
-                                                         userInfo:@{NSLocalizedDescriptionKey: @"Scan failed"}];
+                                                         userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Scan failed with code %d", error]}];
                     if ([self.delegate respondsToSelector:@selector(wifiScanner:didEncounterError:)]) {
                         [self.delegate wifiScanner:self didEncounterError:scanError];
                     }
@@ -387,20 +384,26 @@ static WGWiFiScanner *_sharedInstance = nil;
                 return;
             }
             
+            NSLog(@"[WiFiGuard] Scan completed, processing results...");
             [self processScanResults:results];
         }, 0);
         
     } @catch (NSException *exception) {
-        NSLog(@"[WiFiGuard] Scan error: %@", exception);
+        NSLog(@"[WiFiGuard] Scan exception: %@", exception);
     }
 }
 
 - (void)processScanResults:(CFArrayRef)results {
-    if (!results) return;
+    if (!results) {
+        NSLog(@"[WiFiGuard] processScanResults: results is NULL");
+        return;
+    }
+    
+    CFIndex count = CFArrayGetCount(results);
+    NSLog(@"[WiFiGuard] Processing %ld scan results", (long)count);
     
     NSMutableArray<WGNetworkInfo *> *updatedNetworks = [NSMutableArray array];
     
-    CFIndex count = CFArrayGetCount(results);
     for (CFIndex i = 0; i < count; i++) {
         WiFiNetworkRef network = (WiFiNetworkRef)CFArrayGetValueAtIndex(results, i);
         
@@ -418,6 +421,8 @@ static WGWiFiScanner *_sharedInstance = nil;
                 [info addRSSISample:info.rssi];
                 self.networkCache[info.bssid] = info;
                 [updatedNetworks addObject:info];
+                NSLog(@"[WiFiGuard] New network: %@ (%@) Ch:%ld RSSI:%ld", 
+                      info.ssid ?: @"<Hidden>", info.bssid, (long)info.channel, (long)info.rssi);
             }
         }
     }
@@ -689,12 +694,13 @@ static WGWiFiScanner *_sharedInstance = nil;
     if (!self.wifiDevice) {
         return @"❌ No WiFi Device";
     }
-    if (WiFiDeviceClientGetPower && !WiFiDeviceClientGetPower(self.wifiDevice)) {
-        return @"⚠️ WiFi OFF";
-    }
     if (self.isScanning) {
-        return @"✅ Scanning...";
+        NSInteger count = self.networkCache.count;
+        if (count > 0) {
+            return [NSString stringWithFormat:@"✅ Found %ld", (long)count];
+        }
+        return @"🔍 Scanning...";
     }
-    return @"✅ Ready";
+    return @"⏸ Ready";
 }
 @end
