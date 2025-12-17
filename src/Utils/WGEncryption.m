@@ -36,7 +36,11 @@ static const NSUInteger kPBKDFRounds = 100000;
 
 + (NSData *)generateRandomSalt {
     NSMutableData *salt = [NSMutableData dataWithLength:kSaltLength];
-    SecRandomCopyBytes(kSecRandomDefault, kSaltLength, salt.mutableBytes);
+    int result = SecRandomCopyBytes(kSecRandomDefault, kSaltLength, salt.mutableBytes);
+    if (result != 0) {
+        NSLog(@"[WiFiGuard] Failed to generate random salt");
+        return nil;
+    }
     return salt;
 }
 
@@ -58,7 +62,15 @@ static const NSUInteger kPBKDFRounds = 100000;
     // Generate random salt and IV
     NSData *salt = [self generateRandomSalt];
     NSMutableData *iv = [NSMutableData dataWithLength:kIVLength];
-    SecRandomCopyBytes(kSecRandomDefault, kIVLength, iv.mutableBytes);
+    int ivResult = SecRandomCopyBytes(kSecRandomDefault, kIVLength, iv.mutableBytes);
+    if (ivResult != 0) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"WGEncryptionError" 
+                                         code:2 
+                                     userInfo:@{NSLocalizedDescriptionKey: @"Failed to generate IV"}];
+        }
+        return nil;
+    }
     
     // Derive key from password
     NSData *key = [self deriveKeyFromPassword:password salt:salt];
